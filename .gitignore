@@ -1,0 +1,28 @@
+
+# Environment Variables
+.env
+.venv
+env/
+venv/
+ENV/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Database
+*.db
+*.sqlite3
+data/translations.db
+
+# Cache & Logs
+audio_cache/
+logs/
+*.log
+
+# vscode
+.vscode/
+
+# Docker
+docker-compose.override.yml
