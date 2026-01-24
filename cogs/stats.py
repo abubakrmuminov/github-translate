@@ -27,41 +27,8 @@ class Stats(commands.Cog):
         # if new_level > old_level: send_notification(...)
         pass
 
-    @app_commands.command(name="leaderboard", description="View top users")
-    @app_commands.describe(category="Ranking category", timeframe="Time period")
-    async def leaderboard(self, interaction: discord.Interaction, category: Literal["xp", "translations", "streak"], timeframe: Literal["weekly", "alltime"] = "weekly"):
-        
-        embed = discord.Embed(title=f"🏆 Leaderboard: {category.upper()} ({timeframe})", color=0xf1c40f)
-        
-        # Mock Data
-        top_users = [
-            (1, "SuperUser", 2450, "🔥 12"),
-            (2, "ActiveUser", 1890, "🔥 8"),
-            (3, "CoolUser", 1650, "🔥 15"),
-        ]
-        
-        desc = ""
-        for rank, name, score, extra in top_users:
-            medal = {1: "🥇", 2: "🥈", 3: "🥉"}.get(rank, f"{rank}.")
-            desc += f"**{medal} {name}**\n💯 {score} | {extra}\n\n"
-            
-        embed.description = desc
-        
-        # User's rank
-        embed.add_field(name="📍 Your Rank", value="#23 (340 XP)", inline=False)
-        
-        await interaction.response.send_message(embed=embed)
-
-    @app_commands.command(name="mystats", description="Check your personal statistics")
-    async def mystats(self, interaction: discord.Interaction):
-        # Fetch data
-        embed = discord.Embed(title="📊 Your Statistics", color=0x3498db)
-        embed.add_field(name="Level", value="5 (Polyglot)", inline=True)
-        embed.add_field(name="XP", value="1250", inline=True)
-        embed.add_field(name="Current Streak", value="🔥 5 days", inline=True)
-        embed.add_field(name="Translations", value="142", inline=True)
-        
-        await interaction.response.send_message(embed=embed)
+    # Commands 'leaderboard' and 'mystats' are now handled by cogs.quiz package.
+    pass
 
 async def setup(bot):
     await bot.add_cog(Stats(bot))
