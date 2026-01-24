@@ -14,8 +14,12 @@ class Settings(commands.Cog):
 
     @app_commands.command(name="settings", description="Configure your preferences")
     async def settings(self, interaction: discord.Interaction):
-        # Fetch current settings (mock or cache)
+        # Fetch current settings (Cache -> DB)
         user_settings = await cache.get_user_settings(interaction.user.id)
+        
+        if not user_settings and self.bot.db:
+             user_settings = await self.bot.db.get_user_settings(interaction.user.id)
+
         if not user_settings:
             user_settings = {"preferred_language": "en"}
             
@@ -25,12 +29,13 @@ class Settings(commands.Cog):
         embed = discord.Embed(title="⚙️ Settings", color=0x3498db)
         embed.add_field(name="🌍 Primary Language", value=f"{lang_info['flag']} {lang_info['name']}")
         
-        view = SettingsView(current_lang)
+        view = SettingsView(current_lang, self)
         await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
 
 class SettingsView(discord.ui.View):
-    def __init__(self, current_lang: str):
+    def __init__(self, current_lang: str, cog: commands.Cog):
         super().__init__()
+        self.cog = cog
         
         # Language Select
         select = discord.ui.Select(placeholder="Change Language...", min_values=1, max_values=1)
@@ -46,12 +51,16 @@ class SettingsView(discord.ui.View):
 
     async def lang_callback(self, interaction: discord.Interaction):
         lang = interaction.data["values"][0]
-        # Save to cache/db
-        current = await cache.get_user_settings(interaction.user.id) or {}
-        current["preferred_language"] = lang
+        
+        # Save to DB (Persistent)
+        if hasattr(self.cog.bot, 'db') and self.cog.bot.db:
+            await self.cog.bot.db.update_user_settings(interaction.user.id, lang)
+        
+        # Save to Cache (Fast access)
+        current = {"preferred_language": lang}
         await cache.set_user_settings(interaction.user.id, current)
         
-        await interaction.response.send_message(f"✅ Language set to {lang}", ephemeral=True)
+        await interaction.response.send_message(f"✅ Language set to {lang} (Saved permanently)", ephemeral=True)
 
 async def setup(bot):
     await bot.add_cog(Settings(bot))

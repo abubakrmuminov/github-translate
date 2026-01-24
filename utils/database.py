@@ -124,8 +124,19 @@ class Database:
         await self.conn.executescript(schema)
         await self.conn.commit()
 
-    async def create_guild_settings(self, guild_id: int):
-        await self.execute(
-            "INSERT OR IGNORE INTO guild_settings (guild_id) VALUES (?)",
-            (guild_id,)
-        )
+    async def get_user_settings(self, user_id: int) -> dict:
+        """Get user settings from DB"""
+        row = await self.fetchrow("SELECT * FROM user_settings WHERE user_id = ?", (user_id,))
+        if row:
+            return dict(row)
+        return {}
+
+    async def update_user_settings(self, user_id: int, lang: str):
+        """Update user preferred language"""
+        await self.execute("""
+            INSERT INTO user_settings (user_id, preferred_language)
+            VALUES (?, ?)
+            ON CONFLICT(user_id) DO UPDATE SET
+                preferred_language = excluded.preferred_language,
+                updated_at = CURRENT_TIMESTAMP
+        """, (user_id, lang))

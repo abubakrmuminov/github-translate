@@ -82,6 +82,13 @@ class Translation(commands.Cog):
             
         # Get user settings
         settings = await cache.get_user_settings(interaction.user.id)
+        
+        if not settings and self.bot.db:
+            settings = await self.bot.db.get_user_settings(interaction.user.id)
+            # Refill cache if found
+            if settings:
+                await cache.set_user_settings(interaction.user.id, settings)
+            
         target_lang = settings.get("preferred_language", "en") if settings else "en"
         
         await self._process_translation(interaction, message.content, target_lang)
@@ -91,6 +98,9 @@ class Translation(commands.Cog):
     async def translate_cmd(self, interaction: discord.Interaction, text: str, target: Optional[str] = None):
         if not target:
              settings = await cache.get_user_settings(interaction.user.id)
+             if not settings and self.bot.db:
+                 settings = await self.bot.db.get_user_settings(interaction.user.id)
+                 
              target = settings.get("preferred_language", "en") if settings else "en"
              
         await self._process_translation(interaction, text, target)
