@@ -46,6 +46,7 @@ class Config:
         "ko": {"name": "한국어", "flag": "🇰🇷", "tts_code": "ko"},
         "pt": {"name": "Português", "flag": "🇵🇹", "tts_code": "pt"},
         "es": {"name": "Español", "flag": "🇪🇸", "tts_code": "es"},
+        "de": {"name": "Deutsch", "flag": "🇩🇪", "tts_code": "de"},
     }
     
     # XP System

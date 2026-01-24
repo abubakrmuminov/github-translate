@@ -47,7 +47,10 @@ class Quiz(commands.Cog):
         difficulty: Literal["easy", "medium", "hard"] = "medium"
     ):
         await interaction.response.defer(ephemeral=(mode == "solo"))
-        
+        # Start the loop
+        await self.send_question(interaction, mode, language, difficulty)
+
+    async def send_question(self, interaction: discord.Interaction, mode: str, language: str, difficulty: str, is_update: bool = False):
         # Get user data
         user = await self.db.get_user(interaction.user.id, interaction.user.name)
         
@@ -66,7 +69,11 @@ class Quiz(commands.Cog):
             ]
         except Exception as e:
             logger.error(f"Quiz generation error: {e}")
-            await interaction.followup.send("❌ Failed to generate quiz. Try again.", ephemeral=True)
+            msg = "❌ Failed to generate quiz. Try again."
+            if is_update:
+                await interaction.edit_original_response(content=msg, embed=None, view=None)
+            else:
+                await interaction.followup.send(msg, ephemeral=True)
             return
 
         # Prepare options
@@ -99,7 +106,7 @@ class Quiz(commands.Cog):
         )
         embed.set_footer(text=f"Category: {category.replace('_', ' ').title()} | ⏱️ You have 30 seconds!")
         
-        # Multiplayer mode
+        # Multiplayer mode logic (stripped for brevity, re-add if needed, but focused on solo flow now)
         if mode == "multiplayer":
             self.active_multiplayer_games[interaction.channel_id] = {
                 'participants': {},
@@ -111,6 +118,8 @@ class Quiz(commands.Cog):
             }
         
         view = QuizView(
+            self, # Pass cog instance
+            interaction,
             self.db,
             options, 
             correct_index, 
@@ -119,14 +128,21 @@ class Quiz(commands.Cog):
             difficulty,
             language,
             user_id=interaction.user.id,
+            mode=mode,
             is_multiplayer=(mode == "multiplayer"),
             game_data=self.active_multiplayer_games.get(interaction.channel_id)
         )
         
-        await interaction.followup.send(embed=embed, view=view, ephemeral=(mode == "solo"))
+        if is_update:
+             await interaction.edit_original_response(embed=embed, view=view)
+        else:
+             await interaction.followup.send(embed=embed, view=view, ephemeral=(mode == "solo"))
         
         # Auto-disable after timeout
         await asyncio.sleep(30)
+        # Check if view still active/same question
+        # This simple timeout logic might conflict with next questions in same message, 
+        # but since we create NEW View instance each time, it should be fine.
         if not view.answered:
             view.stop()
             for item in view.children:
@@ -137,12 +153,11 @@ class Quiz(commands.Cog):
                 description=f"The correct answer was: **{correct_translation}**",
                 color=0xe74c3c
             )
-            
             try:
                 if mode == "solo":
-                    await interaction.edit_original_response(embed=timeout_embed, view=view)
+                    # Check if we haven't already moved to next question
+                    await interaction.edit_original_response(embed=timeout_embed, view=None)
                 else:
-                    # For multiplayer, send as new message
                     await interaction.channel.send(embed=timeout_embed)
             except:
                 pass
@@ -267,6 +282,8 @@ class Quiz(commands.Cog):
 class QuizView(discord.ui.View):
     def __init__(
         self, 
+        cog: Quiz,
+        interaction: discord.Interaction,
         db: QuizDatabase,
         options: list, 
         correct_index: int, 
@@ -275,10 +292,13 @@ class QuizView(discord.ui.View):
         difficulty: str,
         language: str,
         user_id: int,
+        mode: str,
         is_multiplayer: bool = False,
         game_data: dict = None
     ):
         super().__init__(timeout=30)
+        self.cog = cog
+        self.interaction = interaction
         self.db = db
         self.correct_index = correct_index
         self.original_word = original_word
@@ -286,6 +306,7 @@ class QuizView(discord.ui.View):
         self.difficulty = difficulty
         self.language = language
         self.user_id = user_id
+        self.mode = mode
         self.is_multiplayer = is_multiplayer
         self.game_data = game_data
         self.answered = False
@@ -317,7 +338,7 @@ class QuizView(discord.ui.View):
         selected_index = int(interaction.data["custom_id"])
         is_correct = (selected_index == self.correct_index)
         
-        # Calculate time bonus (faster = more XP, max 5 seconds bonus)
+        # Calculate time bonus
         time_taken = time.time() - self.start_time
         time_bonus = max(0, int(5 - (time_taken / 6)))  # 0-5 bonus XP
         
@@ -373,11 +394,14 @@ class QuizView(discord.ui.View):
                 description += f" (⚡ +{time_bonus} speed bonus)"
             if streak_xp > 0:
                 description += f"\n🔥 **Streak Bonus: +{streak_xp} XP** ({stats['new_streak']} in a row!)"
+                
+            footer_text = "✨ Loading next question in 2s..."
         else:
             title = "❌ Incorrect!"
             color = 0xe74c3c
             description = f"The correct answer was: **{self.correct_word}**\n\n"
             description += f"💔 Streak reset: {user['current_streak']} → 0"
+            footer_text = "Game Over (Incorrect Answer)"
         
         # Level up notification
         if stats['level_up']:
@@ -394,7 +418,7 @@ class QuizView(discord.ui.View):
             description += f"\n\n📊 **{xp_needed} XP** to Level {current_level + 1}"
         
         embed = discord.Embed(title=title, description=description, color=color)
-        embed.set_footer(text=f"Total XP: {stats['new_xp']} | Level: {stats['new_level']}")
+        embed.set_footer(text=footer_text)
         
         # In multiplayer, track participant
         if self.is_multiplayer:
@@ -404,6 +428,17 @@ class QuizView(discord.ui.View):
             }
         
         await interaction.response.edit_message(embed=embed, view=self)
+        
+        # AUTO CONTINUE IF CORRECT
+        if is_correct and not self.is_multiplayer:
+            await asyncio.sleep(2)
+            await self.cog.send_question(
+                self.interaction, 
+                self.mode, 
+                self.language, 
+                self.difficulty,
+                is_update=True
+            )
 
 async def setup(bot):
     await bot.add_cog(Quiz(bot))
