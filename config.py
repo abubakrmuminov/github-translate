@@ -47,6 +47,8 @@ class Config:
         "pt": {"name": "Português", "flag": "🇵🇹", "tts_code": "pt"},
         "es": {"name": "Español", "flag": "🇪🇸", "tts_code": "es"},
         "de": {"name": "Deutsch", "flag": "🇩🇪", "tts_code": "de"},
+        "tr": {"name": "Türkçe", "flag": "🇹🇷", "tts_code": "tr"},
+        "ar": {"name": "العربية", "flag": "🇸🇦", "tts_code": "ar"},
     }
     
     # XP System
