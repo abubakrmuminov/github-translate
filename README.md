@@ -66,7 +66,7 @@
 
 1.  **Клонируйте репозиторий**:
     ```bash
-    git clone https://github.com/yourusername/discord-translator-bot.git
+    git clone https://github.com/abubakrmuminov/discord-translator.git
     cd discord-translator-bot
     ```
 
@@ -173,4 +173,4 @@ discord-translator-bot/
 5.  Open a Pull Request.
 
 ---
-Made with ❤️ by [Your Name] using **Discord.py** & **Deep Translator**.
+Made with ❤️ by Abubakr Muminov using **Discord.py** & **Deep Translator**.
